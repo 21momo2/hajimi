@@ -161,7 +161,7 @@ class GeminiClient:
         model = request.model
         format_type = getattr(request, "format_type", None)
         if format_type and (format_type == "gemini"):
-            api_version = "v1alpha" if "think" in request.model else "v1beta"
+            api_version = "v1alpha" if ("think" in request.model or "gemma-4" in request.model) else "v1beta"
             if request.payload:
                 # 将 Pydantic 模型转换为字典, 假设 Pydantic V2+
                 data = request.payload.model_dump(exclude_none=True)
@@ -225,7 +225,7 @@ class GeminiClient:
             
         generationConfig = {k: v for k, v in config_params.items() if v is not None}
 
-        api_version = "v1alpha" if "think" in request.model else "v1beta"
+        api_version = "v1alpha" if ("think" in request.model or "gemma-4" in request.model) else "v1beta"
 
         data = {
             "contents": contents,
@@ -556,9 +556,12 @@ class GeminiClient:
             models = []
             for model in data.get("models", []):
                 models.append(model["name"])
-                if (
+                # 联网搜索模式支持：gemini-2/3 和 gemma-4 系列
+                if settings.search["search_mode"] and (
                     model["name"].startswith("models/gemini-2")
-                    and settings.search["search_mode"]
+                    or model["name"].startswith("models/gemini-3")
+                    or model["name"].startswith("models/gemma-4")
+                    or model["name"].startswith("models/gemma-3")
                 ):
                     models.append(model["name"] + "-search")
             models.extend(GeminiClient.EXTRA_MODELS)
