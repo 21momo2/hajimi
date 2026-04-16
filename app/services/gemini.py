@@ -161,7 +161,7 @@ class GeminiClient:
         model = request.model
         format_type = getattr(request, "format_type", None)
         if format_type and (format_type == "gemini"):
-            api_version = "v1alpha" if ("think" in request.model or "gemma-4" in request.model) else "v1beta"
+            api_version = "v1alpha" if "think" in request.model else "v1beta"
             if request.payload:
                 # 将 Pydantic 模型转换为字典, 假设 Pydantic V2+
                 data = request.payload.model_dump(exclude_none=True)
@@ -212,20 +212,24 @@ class GeminiClient:
             else None,
             "candidateCount": request.n,
         }
+        # 判断是否为Gemma模型（Gemma不支持thinking功能）
+        is_gemma_model = "gemma" in request.model.lower()
+
         thinking_config = {}
-        if settings.ENABLE_THINKING:
+        if settings.ENABLE_THINKING and not is_gemma_model:
             if request.thinking_budget is not None:
                 thinking_config["thinkingBudget"] = request.thinking_budget
             
             if getattr(request, "enable_thinking", False):
-                thinking_config["include_thoughts"] = True
+                thinking_config["includeThoughts"] = True
 
         if thinking_config:
             config_params["thinkingConfig"] = thinking_config
             
         generationConfig = {k: v for k, v in config_params.items() if v is not None}
 
-        api_version = "v1alpha" if ("think" in request.model or "gemma-4" in request.model) else "v1beta"
+        # 仅think后缀的模型使用v1alpha，Gemma使用v1beta
+        api_version = "v1alpha" if "think" in request.model else "v1beta"
 
         data = {
             "contents": contents,
